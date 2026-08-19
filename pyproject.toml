@@ -23,3 +23,10 @@ testpaths = ["tests"]
 
 [tool.setuptools.packages.find]
 include = ["repodoctor*"]
+
+[tool.repodoctor]
+complexity_threshold = 10
+large_file_threshold = 500
+large_function_threshold = 50
+nesting_threshold = 4
+argument_threshold = 6

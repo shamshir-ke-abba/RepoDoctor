@@ -18,7 +18,10 @@ class RepositoryScanner:
         config: ScanConfig | None = None,
     ):
         self.root = root.resolve()
-        self.config = config or ScanConfig()
+        self.config = (
+            config
+            or ScanConfig.from_pyproject(self.root)
+        )
 
         self.python_analyzer = PythonAnalyzer()
         self.security_analyzer = SecurityAnalyzer()
