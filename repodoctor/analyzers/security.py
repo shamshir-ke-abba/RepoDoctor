@@ -57,6 +57,31 @@ class SecurityAnalyzer:
         ),
     ]
 
+    PLACEHOLDER_VALUES = {
+        "changeme",
+        "change_me",
+        "change-me",
+        "example",
+        "example_key",
+        "example_secret",
+        "fake",
+        "fake_key",
+        "fake_secret",
+        "dummy",
+        "dummy_key",
+        "dummy_secret",
+        "placeholder",
+        "placeholder_key",
+        "placeholder_secret",
+        "test",
+        "test_key",
+        "test_secret",
+        "your_api_key",
+        "your_secret_key",
+        "your_token",
+        "your_password",
+    }
+
     SUSPICIOUS_FILES = {
         ".env",
         ".env.local",
@@ -116,6 +141,9 @@ class SecurityAnalyzer:
             start=1,
         ):
 
+            if self._is_placeholder(line):
+                continue
+
             for (
                 pattern,
                 message,
@@ -135,6 +163,37 @@ class SecurityAnalyzer:
                     )
 
         return findings
+
+    def _is_placeholder(self, line: str) -> bool:
+        """Return True when a secret assignment uses an obvious placeholder."""
+
+        match = re.search(
+            r"=\s*['\"]([^'\"]+)['\"]",
+            line,
+        )
+
+        if not match:
+            return False
+
+        value = match.group(1).strip().lower()
+
+        if value in self.PLACEHOLDER_VALUES:
+            return True
+
+        placeholder_patterns = (
+            r"^your[_-].*",
+            r"^your\s+.*",
+            r"^example[_-].*",
+            r"^test[_-].*",
+            r"^dummy[_-].*",
+            r"^fake[_-].*",
+            r"^placeholder[_-].*",
+        )
+
+        return any(
+            re.match(pattern, value)
+            for pattern in placeholder_patterns
+        )
 
     def _files(self, root: Path):
 
