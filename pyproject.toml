@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "repodoctor"
+version = "0.1.0"
+description = "Repository health analyzer for developers"
+requires-python = ">=3.10"
+
+[project.scripts]
+repodoctor = "repodoctor.cli:main"
