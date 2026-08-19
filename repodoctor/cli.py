@@ -6,14 +6,12 @@ from repodoctor.reporting.terminal import TerminalReporter
 from repodoctor.scanner import RepositoryScanner
 
 
-def main():
+def build_parser():
+    """Build and return the command-line argument parser."""
 
     parser = argparse.ArgumentParser(
         prog="repodoctor",
-        description=(
-            "Analyze a repository and detect "
-            "potential problems."
-        ),
+        description="Analyze a repository and detect potential problems.",
     )
 
     parser.add_argument(
@@ -33,62 +31,90 @@ def main():
     parser.add_argument(
         "--fail-under",
         type=int,
+        default=None,
         metavar="SCORE",
-        help=(
-            "Exit with failure if the health "
-            "score is below SCORE"
-        ),
+        help="Exit with failure if the health score is below SCORE",
     )
 
-    args = parser.parse_args()
+    return parser
+
+
+def validate_args(args):
+    """Validate command-line arguments and return the repository path."""
 
     if args.fail_under is not None:
         if not 0 <= args.fail_under <= 100:
-            parser.error(
+            print(
+                "repodoctor: error: "
                 "--fail-under must be between 0 and 100"
             )
+            raise SystemExit(2)
 
-    root = Path(args.path)
+    path = Path(args.path).expanduser()
 
-    if not root.exists():
-        parser.error(
-            f"Path does not exist: {root}"
+    if not path.exists():
+        print(
+            f"repodoctor: error: Path does not exist: {path}"
         )
+        raise SystemExit(2)
 
-    if not root.is_dir():
-        parser.error(
-            f"Path is not a directory: {root}"
+    if not path.is_dir():
+        print(
+            f"repodoctor: error: Path is not a directory: {path}"
         )
+        raise SystemExit(2)
 
-    scanner = RepositoryScanner(root)
+    return path.resolve()
+
+
+def print_report(report, output_format):
+    """Render the report using the requested output format."""
+
+    if output_format == "json":
+        JSONReporter().print_report(report)
+    else:
+        TerminalReporter().print_report(report)
+
+
+def handle_threshold(report, fail_under):
+    """Handle --fail-under and exit with the appropriate status."""
+
+    if fail_under is None:
+        return
+
+    if report.health_score < fail_under:
+        print(
+            f"\nFAIL: health score {report.health_score}/100 "
+            f"is below required threshold {fail_under}/100"
+        )
+        raise SystemExit(1)
+
+    print(
+        f"\nPASS: health score {report.health_score}/100 "
+        f"meets required threshold {fail_under}/100"
+    )
+
+
+def main():
+    """Run RepoDoctor from the command line."""
+
+    parser = build_parser()
+    args = parser.parse_args()
+
+    path = validate_args(args)
+
+    scanner = RepositoryScanner(path)
     report = scanner.scan()
 
-    if args.format == "json":
-        reporter = JSONReporter()
-    else:
-        reporter = TerminalReporter()
+    print_report(
+        report,
+        args.format,
+    )
 
-    reporter.print_report(report)
-
-    if args.fail_under is not None:
-
-        if report.health_score < args.fail_under:
-
-            print(
-                f"\nFAIL: health score "
-                f"{report.health_score}/100 is below "
-                f"required threshold "
-                f"{args.fail_under}/100"
-            )
-
-            raise SystemExit(1)
-
-        print(
-            f"\nPASS: health score "
-            f"{report.health_score}/100 meets "
-            f"required threshold "
-            f"{args.fail_under}/100"
-        )
+    handle_threshold(
+        report,
+        args.fail_under,
+    )
 
 
 if __name__ == "__main__":
