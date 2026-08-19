@@ -3,9 +3,9 @@ from pathlib import Path
 import tomllib
 
 
-@dataclass(frozen=True)
+@dataclass
 class ScanConfig:
-    """Configuration for repository health analysis."""
+    """Configuration for repository scanning."""
 
     complexity_threshold: int = 10
     large_file_threshold: int = 500
@@ -18,11 +18,11 @@ class ScanConfig:
         cls,
         root: Path,
     ) -> "ScanConfig":
-        """Load scanner configuration from pyproject.toml."""
+        """Load configuration from pyproject.toml."""
 
         pyproject = root / "pyproject.toml"
 
-        if not pyproject.is_file():
+        if not pyproject.exists():
             return cls()
 
         try:
@@ -31,62 +31,54 @@ class ScanConfig:
         except (OSError, tomllib.TOMLDecodeError):
             return cls()
 
-        values = data.get("tool", {}).get(
-            "repodoctor",
-            {},
+        section = (
+            data
+            .get("tool", {})
+            .get("repodoctor", {})
         )
-
-        defaults = cls()
 
         return cls(
-            complexity_threshold=_positive_int(
-                values.get(
-                    "complexity_threshold",
-                    defaults.complexity_threshold,
-                ),
-                defaults.complexity_threshold,
+            complexity_threshold=cls._get_int(
+                section,
+                "complexity_threshold",
+                cls.complexity_threshold,
             ),
-            large_file_threshold=_positive_int(
-                values.get(
-                    "large_file_threshold",
-                    defaults.large_file_threshold,
-                ),
-                defaults.large_file_threshold,
+            large_file_threshold=cls._get_int(
+                section,
+                "large_file_threshold",
+                cls.large_file_threshold,
             ),
-            large_function_threshold=_positive_int(
-                values.get(
-                    "large_function_threshold",
-                    defaults.large_function_threshold,
-                ),
-                defaults.large_function_threshold,
+            large_function_threshold=cls._get_int(
+                section,
+                "large_function_threshold",
+                cls.large_function_threshold,
             ),
-            nesting_threshold=_positive_int(
-                values.get(
-                    "nesting_threshold",
-                    defaults.nesting_threshold,
-                ),
-                defaults.nesting_threshold,
+            nesting_threshold=cls._get_int(
+                section,
+                "nesting_threshold",
+                cls.nesting_threshold,
             ),
-            argument_threshold=_positive_int(
-                values.get(
-                    "argument_threshold",
-                    defaults.argument_threshold,
-                ),
-                defaults.argument_threshold,
+            argument_threshold=cls._get_int(
+                section,
+                "argument_threshold",
+                cls.argument_threshold,
             ),
         )
 
+    @staticmethod
+    def _get_int(
+        section: dict,
+        key: str,
+        default: int,
+    ) -> int:
+        """Read a positive integer configuration value."""
 
-def _positive_int(
-    value,
-    default: int,
-) -> int:
-    """Return a valid positive integer or the default."""
+        value = section.get(key, default)
 
-    if isinstance(value, bool):
+        if isinstance(value, bool):
+            return default
+
+        if isinstance(value, int) and value > 0:
+            return value
+
         return default
-
-    if isinstance(value, int) and value > 0:
-        return value
-
-    return default

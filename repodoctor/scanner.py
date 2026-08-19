@@ -18,9 +18,13 @@ class RepositoryScanner:
         config: ScanConfig | None = None,
     ):
         self.root = root.resolve()
+
+        # Load configuration from pyproject.toml unless
+        # an explicit configuration object was provided.
         self.config = (
             config
-            or ScanConfig.from_pyproject(self.root)
+            if config is not None
+            else ScanConfig.from_pyproject(self.root)
         )
 
         self.python_analyzer = PythonAnalyzer()
@@ -96,9 +100,12 @@ class RepositoryScanner:
         report: RepositoryReport,
         result,
     ):
-        """Record Python files exceeding the configured threshold."""
+        """Record Python files exceeding the configured size threshold."""
 
-        if result.lines >= self.config.large_file_threshold:
+        if (
+            result.lines
+            >= self.config.large_file_threshold
+        ):
             report.large_files.append(
                 f"{result.path} ({result.lines} lines)"
             )
@@ -108,7 +115,7 @@ class RepositoryScanner:
         report: RepositoryReport,
         result,
     ):
-        """Classify functions using configured quality thresholds."""
+        """Classify functions according to configured thresholds."""
 
         for function in result.functions_report:
             self._check_function_size(
@@ -136,6 +143,8 @@ class RepositoryScanner:
         report: RepositoryReport,
         function,
     ):
+        """Check function length."""
+
         if (
             function.lines
             >= self.config.large_function_threshold
@@ -147,6 +156,8 @@ class RepositoryScanner:
         report: RepositoryReport,
         function,
     ):
+        """Check function nesting depth."""
+
         if (
             function.nesting_depth
             >= self.config.nesting_threshold
@@ -158,6 +169,8 @@ class RepositoryScanner:
         report: RepositoryReport,
         function,
     ):
+        """Check number of function arguments."""
+
         if (
             function.arguments
             >= self.config.argument_threshold
@@ -171,11 +184,15 @@ class RepositoryScanner:
         report: RepositoryReport,
         function,
     ):
+        """Check cyclomatic-style complexity."""
+
         if (
             function.complexity
             >= self.config.complexity_threshold
         ):
-            report.complex_functions.append(function)
+            report.complex_functions.append(
+                function
+            )
 
     # ------------------------------------------------------------------
     # Repository analysis
@@ -192,7 +209,9 @@ class RepositoryScanner:
         )
 
         report.has_readme = result["has_readme"]
-        report.has_gitignore = result["has_gitignore"]
+        report.has_gitignore = result[
+            "has_gitignore"
+        ]
 
     def _scan_security(
         self,
@@ -248,7 +267,7 @@ class RepositoryScanner:
         self,
         report: RepositoryReport,
     ):
-        """Generate all repository warnings."""
+        """Generate all warnings for the repository."""
 
         self._warn_security(report)
         self._warn_code_quality(report)
@@ -373,7 +392,9 @@ class RepositoryScanner:
     ) -> int:
         """Calculate security-related score penalty."""
 
-        return len(report.security_findings) * 8
+        return len(
+            report.security_findings
+        ) * 8
 
     def _code_quality_penalty(
         self,
@@ -384,23 +405,30 @@ class RepositoryScanner:
         penalty = 0
 
         penalty += (
-            len(report.complex_functions) * 3
+            len(report.complex_functions)
+            * 3
         )
 
         penalty += (
-            len(report.large_functions) * 2
+            len(report.large_functions)
+            * 2
         )
 
         penalty += (
-            len(report.deep_functions) * 2
+            len(report.deep_functions)
+            * 2
         )
 
         penalty += (
-            len(report.argument_heavy_functions) * 2
+            len(
+                report.argument_heavy_functions
+            )
+            * 2
         )
 
         penalty += (
-            len(report.large_files) * 3
+            len(report.large_files)
+            * 3
         )
 
         if report.total_todos > 10:
