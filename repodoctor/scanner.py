@@ -4,23 +4,21 @@ from repodoctor.analyzers.git import GitAnalyzer
 from repodoctor.analyzers.python import PythonAnalyzer
 from repodoctor.analyzers.security import SecurityAnalyzer
 from repodoctor.analyzers.structure import StructureAnalyzer
+from repodoctor.config import ScanConfig
 from repodoctor.models import RepositoryReport
 from repodoctor.recommendations import RecommendationEngine
-
-
-# Analysis thresholds
-COMPLEXITY_THRESHOLD = 10
-LARGE_FILE_THRESHOLD = 500
-LARGE_FUNCTION_THRESHOLD = 50
-NESTING_THRESHOLD = 4
-ARGUMENT_THRESHOLD = 6
 
 
 class RepositoryScanner:
     """Scan a repository and build a complete health report."""
 
-    def __init__(self, root: Path):
+    def __init__(
+        self,
+        root: Path,
+        config: ScanConfig | None = None,
+    ):
         self.root = root.resolve()
+        self.config = config or ScanConfig()
 
         self.python_analyzer = PythonAnalyzer()
         self.security_analyzer = SecurityAnalyzer()
@@ -31,7 +29,9 @@ class RepositoryScanner:
     def scan(self) -> RepositoryReport:
         """Run all analyzers and build the final report."""
 
-        report = RepositoryReport(path=str(self.root))
+        report = RepositoryReport(
+            path=str(self.root)
+        )
 
         self._scan_python(report)
         self._scan_structure(report)
@@ -51,15 +51,29 @@ class RepositoryScanner:
     # Python analysis
     # ------------------------------------------------------------------
 
-    def _scan_python(self, report: RepositoryReport):
+    def _scan_python(
+        self,
+        report: RepositoryReport,
+    ):
         """Analyze all Python files in the repository."""
 
         for path in self._python_files():
             result = self.python_analyzer.analyze(path)
 
-            self._update_project_stats(report, result)
-            self._check_file_size(report, result)
-            self._check_functions(report, result)
+            self._update_project_stats(
+                report,
+                result,
+            )
+
+            self._check_file_size(
+                report,
+                result,
+            )
+
+            self._check_functions(
+                report,
+                result,
+            )
 
     def _update_project_stats(
         self,
@@ -79,9 +93,9 @@ class RepositoryScanner:
         report: RepositoryReport,
         result,
     ):
-        """Record Python files exceeding the size threshold."""
+        """Record Python files exceeding the configured threshold."""
 
-        if result.lines >= LARGE_FILE_THRESHOLD:
+        if result.lines >= self.config.large_file_threshold:
             report.large_files.append(
                 f"{result.path} ({result.lines} lines)"
             )
@@ -91,53 +105,114 @@ class RepositoryScanner:
         report: RepositoryReport,
         result,
     ):
-        """Classify functions according to quality thresholds."""
+        """Classify functions using configured quality thresholds."""
 
         for function in result.functions_report:
-            self._check_function_size(report, function)
-            self._check_function_nesting(report, function)
-            self._check_function_arguments(report, function)
-            self._check_function_complexity(report, function)
+            self._check_function_size(
+                report,
+                function,
+            )
 
-    def _check_function_size(self, report, function):
-        if function.lines >= LARGE_FUNCTION_THRESHOLD:
+            self._check_function_nesting(
+                report,
+                function,
+            )
+
+            self._check_function_arguments(
+                report,
+                function,
+            )
+
+            self._check_function_complexity(
+                report,
+                function,
+            )
+
+    def _check_function_size(
+        self,
+        report: RepositoryReport,
+        function,
+    ):
+        if (
+            function.lines
+            >= self.config.large_function_threshold
+        ):
             report.large_functions.append(function)
 
-    def _check_function_nesting(self, report, function):
-        if function.nesting_depth >= NESTING_THRESHOLD:
+    def _check_function_nesting(
+        self,
+        report: RepositoryReport,
+        function,
+    ):
+        if (
+            function.nesting_depth
+            >= self.config.nesting_threshold
+        ):
             report.deep_functions.append(function)
 
-    def _check_function_arguments(self, report, function):
-        if function.arguments >= ARGUMENT_THRESHOLD:
-            report.argument_heavy_functions.append(function)
+    def _check_function_arguments(
+        self,
+        report: RepositoryReport,
+        function,
+    ):
+        if (
+            function.arguments
+            >= self.config.argument_threshold
+        ):
+            report.argument_heavy_functions.append(
+                function
+            )
 
-    def _check_function_complexity(self, report, function):
-        if function.complexity >= COMPLEXITY_THRESHOLD:
+    def _check_function_complexity(
+        self,
+        report: RepositoryReport,
+        function,
+    ):
+        if (
+            function.complexity
+            >= self.config.complexity_threshold
+        ):
             report.complex_functions.append(function)
 
     # ------------------------------------------------------------------
     # Repository analysis
     # ------------------------------------------------------------------
 
-    def _scan_structure(self, report: RepositoryReport):
+    def _scan_structure(
+        self,
+        report: RepositoryReport,
+    ):
         """Analyze repository structure."""
 
-        result = self.structure_analyzer.analyze(self.root)
+        result = self.structure_analyzer.analyze(
+            self.root
+        )
 
         report.has_readme = result["has_readme"]
         report.has_gitignore = result["has_gitignore"]
 
-    def _scan_security(self, report: RepositoryReport):
+    def _scan_security(
+        self,
+        report: RepositoryReport,
+    ):
         """Scan the repository for security problems."""
 
         report.security_findings = (
-            self.security_analyzer.scan(self.root)
+            self.security_analyzer.scan(
+                self.root
+            )
         )
 
-    def _scan_git(self, report: RepositoryReport):
+    def _scan_git(
+        self,
+        report: RepositoryReport,
+    ):
         """Analyze Git repository health."""
 
-        report.git = self.git_analyzer.analyze(self.root)
+        report.git = self.git_analyzer.analyze(
+            self.root
+        )
+
         report.is_git_repo = report.git.is_repo
 
     def _python_files(self):
@@ -154,7 +229,10 @@ class RepositoryScanner:
         }
 
         for path in self.root.rglob("*.py"):
-            if any(part in ignored for part in path.parts):
+            if any(
+                part in ignored
+                for part in path.parts
+            ):
                 continue
 
             yield path
@@ -163,15 +241,21 @@ class RepositoryScanner:
     # Warnings
     # ------------------------------------------------------------------
 
-    def _generate_warnings(self, report: RepositoryReport):
-        """Generate all warnings for the repository."""
+    def _generate_warnings(
+        self,
+        report: RepositoryReport,
+    ):
+        """Generate all repository warnings."""
 
         self._warn_security(report)
         self._warn_code_quality(report)
         self._warn_project_structure(report)
         self._warn_git(report)
 
-    def _warn_security(self, report: RepositoryReport):
+    def _warn_security(
+        self,
+        report: RepositoryReport,
+    ):
         """Generate security warnings."""
 
         if report.security_findings:
@@ -180,7 +264,10 @@ class RepositoryScanner:
                 "security finding(s)"
             )
 
-    def _warn_code_quality(self, report: RepositoryReport):
+    def _warn_code_quality(
+        self,
+        report: RepositoryReport,
+    ):
         """Generate code-quality warnings."""
 
         warning_groups = [
@@ -218,7 +305,10 @@ class RepositoryScanner:
                 "TODO/FIXME comment(s)"
             )
 
-    def _warn_project_structure(self, report: RepositoryReport):
+    def _warn_project_structure(
+        self,
+        report: RepositoryReport,
+    ):
         """Generate project-structure warnings."""
 
         if not report.has_readme:
@@ -231,7 +321,10 @@ class RepositoryScanner:
                 ".gitignore is missing"
             )
 
-    def _warn_git(self, report: RepositoryReport):
+    def _warn_git(
+        self,
+        report: RepositoryReport,
+    ):
         """Generate Git health warnings."""
 
         if not report.git.is_repo:
@@ -251,7 +344,10 @@ class RepositoryScanner:
     # Health score
     # ------------------------------------------------------------------
 
-    def _calculate_score(self, report: RepositoryReport):
+    def _calculate_score(
+        self,
+        report: RepositoryReport,
+    ):
         """Calculate the repository health score."""
 
         penalties = [
@@ -268,7 +364,10 @@ class RepositoryScanner:
             min(100, score),
         )
 
-    def _security_penalty(self, report: RepositoryReport) -> int:
+    def _security_penalty(
+        self,
+        report: RepositoryReport,
+    ) -> int:
         """Calculate security-related score penalty."""
 
         return len(report.security_findings) * 8
@@ -281,11 +380,25 @@ class RepositoryScanner:
 
         penalty = 0
 
-        penalty += len(report.complex_functions) * 3
-        penalty += len(report.large_functions) * 2
-        penalty += len(report.deep_functions) * 2
-        penalty += len(report.argument_heavy_functions) * 2
-        penalty += len(report.large_files) * 3
+        penalty += (
+            len(report.complex_functions) * 3
+        )
+
+        penalty += (
+            len(report.large_functions) * 2
+        )
+
+        penalty += (
+            len(report.deep_functions) * 2
+        )
+
+        penalty += (
+            len(report.argument_heavy_functions) * 2
+        )
+
+        penalty += (
+            len(report.large_files) * 3
+        )
 
         if report.total_todos > 10:
             penalty += 5
