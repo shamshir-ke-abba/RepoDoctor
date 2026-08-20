@@ -154,3 +154,69 @@ def test_multiple_recommendations():
     recommendations = RecommendationEngine().generate(report)
 
     assert len(recommendations) == 9
+
+
+def test_ten_todos_do_not_trigger_warning_recommendation():
+    report = clean_report()
+    report.total_todos = 10
+
+    assert RecommendationEngine().generate(report) == []
+
+
+def test_git_recommendations_preserve_order():
+    report = clean_report()
+    report.git.clean = False
+    report.git.remote = False
+
+    recommendations = RecommendationEngine().generate(report)
+
+    assert recommendations == [
+        "Review and commit or discard "
+        "uncommitted Git changes.",
+        "Configure a Git remote so the "
+        "repository can be backed up "
+        "and collaborated on.",
+    ]
+
+
+def test_all_recommendation_categories_preserve_order():
+    report = clean_report()
+
+    report.security_findings = [object()]
+    report.complex_functions = [object()]
+    report.large_functions = [object()]
+    report.deep_functions = [object()]
+    report.argument_heavy_functions = [object()]
+    report.has_readme = False
+    report.has_gitignore = False
+    report.git.clean = False
+    report.git.remote = False
+
+    recommendations = RecommendationEngine().generate(report)
+
+    assert recommendations == [
+        "Move hardcoded secrets to "
+        "environment variables or a "
+        "secret manager.",
+        "Split high-complexity functions "
+        "into smaller functions with "
+        "single responsibilities.",
+        "Break large functions into "
+        "smaller logical units.",
+        "Reduce deep nesting by using "
+        "early returns and guard clauses.",
+        "Reduce functions with many "
+        "arguments by grouping related "
+        "data into objects or dataclasses.",
+        "Add a README.md containing "
+        "project purpose, installation, "
+        "usage, and examples.",
+        "Add a .gitignore file for "
+        "virtual environments, caches, "
+        "build artifacts, and secrets.",
+        "Review and commit or discard "
+        "uncommitted Git changes.",
+        "Configure a Git remote so the "
+        "repository can be backed up "
+        "and collaborated on.",
+    ]
