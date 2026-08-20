@@ -227,7 +227,7 @@ class RepositoryScanner:
 
         report.security_findings = (
             self.security_analyzer.scan(
-                self.root
+                self.file_collector
             )
         )
 

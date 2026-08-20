@@ -96,13 +96,14 @@ class SecurityAnalyzer:
         "secrets.yml",
     }
 
-    def scan(self, root: Path) -> list[SecurityFinding]:
-        findings = []
+    def scan(
+        self,
+        collector: FileCollector | Path,
+    ) -> list[SecurityFinding]:
+        if isinstance(collector, Path):
+            collector = FileCollector(collector)
 
-        collector = FileCollector(
-            root,
-            max_file_size_bytes=2_000_000,
-        )
+        findings = []
 
         for path in collector.files():
 

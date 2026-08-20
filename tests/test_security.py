@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from repodoctor.analyzers.security import SecurityAnalyzer
+from repodoctor.file_collector import FileCollector
 
 
 def test_detects_fake_api_key(tmp_path: Path):
@@ -175,3 +176,22 @@ PASSWORD = "super_secret_password"
     findings = SecurityAnalyzer().scan(tmp_path)
 
     assert len(findings) == 2
+
+
+def test_scan_uses_configured_file_collector(
+    tmp_path: Path,
+):
+    file = tmp_path / "large.py"
+    file.write_text(
+        'API_KEY = "this_is_a_fake_api_key_123456"\n'
+        + "x" * 100
+    )
+
+    collector = FileCollector(
+        tmp_path,
+        max_file_size_bytes=10,
+    )
+
+    findings = SecurityAnalyzer().scan(collector)
+
+    assert findings == []
