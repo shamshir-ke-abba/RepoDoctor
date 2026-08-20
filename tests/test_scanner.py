@@ -321,3 +321,35 @@ def test_scanner_resolves_root_path(tmp_path: Path):
     )
 
     assert scanner.root == tmp_path.resolve()
+
+def test_scanner_loads_config_from_pyproject(
+    tmp_path: Path,
+):
+    (tmp_path / "pyproject.toml").write_text(
+        """
+[tool.repodoctor]
+complexity_threshold = 2
+argument_threshold = 2
+large_file_threshold = 10
+""".strip()
+    )
+
+    (tmp_path / "main.py").write_text(
+        """
+def hello(a, b):
+    if a:
+        return b
+    return a
+"""
+    )
+
+    scanner = RepositoryScanner(tmp_path)
+
+    assert scanner.config.complexity_threshold == 2
+    assert scanner.config.argument_threshold == 2
+    assert scanner.config.large_file_threshold == 10
+
+    report = scanner.scan()
+
+    assert len(report.complex_functions) == 1
+    assert len(report.argument_heavy_functions) == 1
