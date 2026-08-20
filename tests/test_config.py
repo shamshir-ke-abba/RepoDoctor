@@ -114,3 +114,20 @@ max_file_size_bytes = -1
     config = ScanConfig.from_pyproject(tmp_path)
 
     assert config.max_file_size_bytes == 2_000_000
+
+
+def test_scanner_uses_configured_max_file_size(tmp_path):
+    pyproject = tmp_path / "pyproject.toml"
+
+    pyproject.write_text(
+        """
+[tool.repodoctor]
+max_file_size_bytes = 10
+""".strip()
+    )
+
+    from repodoctor.scanner import RepositoryScanner
+
+    scanner = RepositoryScanner(tmp_path)
+
+    assert scanner.file_collector.max_file_size_bytes == 10
