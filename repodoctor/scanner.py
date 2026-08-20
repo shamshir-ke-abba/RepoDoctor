@@ -1,4 +1,5 @@
 from pathlib import Path
+from repodoctor.file_collector import FileCollector
 
 from repodoctor.analyzers.git import GitAnalyzer
 from repodoctor.analyzers.python import PythonAnalyzer
@@ -25,6 +26,11 @@ class RepositoryScanner:
             config
             if config is not None
             else ScanConfig.from_pyproject(self.root)
+        )
+
+        self.file_collector = FileCollector(
+            self.root,
+            max_file_size_bytes=self.config.max_file_size_bytes,
         )
 
         self.python_analyzer = PythonAnalyzer()
@@ -238,26 +244,9 @@ class RepositoryScanner:
         report.is_git_repo = report.git.is_repo
 
     def _python_files(self):
-        """Yield Python files while skipping generated/dependency folders."""
+        """Yield eligible Python files."""
 
-        ignored = {
-            ".git",
-            ".venv",
-            "venv",
-            "__pycache__",
-            "node_modules",
-            ".mypy_cache",
-            ".pytest_cache",
-        }
-
-        for path in self.root.rglob("*.py"):
-            if any(
-                part in ignored
-                for part in path.parts
-            ):
-                continue
-
-            yield path
+        yield from self.file_collector.python_files()
 
     # ------------------------------------------------------------------
     # Warnings

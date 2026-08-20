@@ -12,6 +12,7 @@ class ScanConfig:
     large_function_threshold: int = 50
     nesting_threshold: int = 4
     argument_threshold: int = 6
+    max_file_size_bytes: int = 2_000_000
 
     @classmethod
     def from_pyproject(
@@ -62,6 +63,11 @@ class ScanConfig:
                 section,
                 "argument_threshold",
                 cls.argument_threshold,
+            ),
+            max_file_size_bytes=cls._get_int(
+                section,
+                "max_file_size_bytes",
+                cls.max_file_size_bytes,
             ),
         )
 

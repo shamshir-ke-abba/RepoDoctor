@@ -2,6 +2,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from repodoctor.file_collector import FileCollector
+
 
 @dataclass
 class SecurityFinding:
@@ -95,10 +97,14 @@ class SecurityAnalyzer:
     }
 
     def scan(self, root: Path) -> list[SecurityFinding]:
-
         findings = []
 
-        for path in self._files(root):
+        collector = FileCollector(
+            root,
+            max_file_size_bytes=2_000_000,
+        )
+
+        for path in collector.files():
 
             if path.name in self.SUSPICIOUS_FILES:
 
@@ -194,35 +200,3 @@ class SecurityAnalyzer:
             re.match(pattern, value)
             for pattern in placeholder_patterns
         )
-
-    def _files(self, root: Path):
-
-        ignored = {
-            ".git",
-            ".venv",
-            "venv",
-            "__pycache__",
-            "node_modules",
-            ".mypy_cache",
-            ".pytest_cache",
-        }
-
-        for path in root.rglob("*"):
-
-            if not path.is_file():
-                continue
-
-            if any(
-                part in ignored
-                for part in path.parts
-            ):
-                continue
-
-            # Skip very large files.
-            try:
-                if path.stat().st_size > 2_000_000:
-                    continue
-            except OSError:
-                continue
-
-            yield path

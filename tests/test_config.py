@@ -78,3 +78,39 @@ complexity_threshold = 5
     config = ScanConfig.from_pyproject(tmp_path)
 
     assert config == ScanConfig()
+
+
+def test_default_max_file_size():
+    config = ScanConfig()
+
+    assert config.max_file_size_bytes == 2_000_000
+
+
+def test_max_file_size_loads_from_pyproject(tmp_path):
+    pyproject = tmp_path / "pyproject.toml"
+
+    pyproject.write_text(
+        """
+[tool.repodoctor]
+max_file_size_bytes = 5000000
+""".strip()
+    )
+
+    config = ScanConfig.from_pyproject(tmp_path)
+
+    assert config.max_file_size_bytes == 5_000_000
+
+
+def test_invalid_max_file_size_uses_default(tmp_path):
+    pyproject = tmp_path / "pyproject.toml"
+
+    pyproject.write_text(
+        """
+[tool.repodoctor]
+max_file_size_bytes = -1
+""".strip()
+    )
+
+    config = ScanConfig.from_pyproject(tmp_path)
+
+    assert config.max_file_size_bytes == 2_000_000
