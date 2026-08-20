@@ -1,7 +1,6 @@
-from repodoctor.scoring import HealthScorer
 from pathlib import Path
-from repodoctor.file_collector import FileCollector
 
+from repodoctor.file_collector import FileCollector
 from repodoctor.analyzers.git import GitAnalyzer
 from repodoctor.analyzers.python import PythonAnalyzer
 from repodoctor.analyzers.security import SecurityAnalyzer
@@ -9,6 +8,8 @@ from repodoctor.analyzers.structure import StructureAnalyzer
 from repodoctor.config import ScanConfig
 from repodoctor.models import RepositoryReport
 from repodoctor.recommendations import RecommendationEngine
+from repodoctor.scoring import HealthScorer
+from repodoctor.warnings import WarningEngine
 
 
 class RepositoryScanner:
@@ -21,8 +22,6 @@ class RepositoryScanner:
     ):
         self.root = root.resolve()
 
-        # Load configuration from pyproject.toml unless
-        # an explicit configuration object was provided.
         self.config = (
             config
             if config is not None
@@ -38,8 +37,9 @@ class RepositoryScanner:
         self.security_analyzer = SecurityAnalyzer()
         self.structure_analyzer = StructureAnalyzer()
         self.git_analyzer = GitAnalyzer()
-        self.recommendation_engine = RecommendationEngine()
+        self.warning_engine = WarningEngine()
         self.health_scorer = HealthScorer()
+        self.recommendation_engine = RecommendationEngine()
 
     def scan(self) -> RepositoryReport:
         """Run all analyzers and build the final report."""
@@ -53,8 +53,13 @@ class RepositoryScanner:
         self._scan_security(report)
         self._scan_git(report)
 
-        self._generate_warnings(report)
-        self._calculate_score(report)
+        report.warnings = (
+            self.warning_engine.generate(report)
+        )
+
+        report.health_score = (
+            self.health_scorer.calculate(report)
+        )
 
         report.recommendations = (
             self.recommendation_engine.generate(report)
@@ -249,119 +254,3 @@ class RepositoryScanner:
         """Yield eligible Python files."""
 
         yield from self.file_collector.python_files()
-
-    # ------------------------------------------------------------------
-    # Warnings
-    # ------------------------------------------------------------------
-
-    def _generate_warnings(
-        self,
-        report: RepositoryReport,
-    ):
-        """Generate all warnings for the repository."""
-
-        self._warn_security(report)
-        self._warn_code_quality(report)
-        self._warn_project_structure(report)
-        self._warn_git(report)
-
-    def _warn_security(
-        self,
-        report: RepositoryReport,
-    ):
-        """Generate security warnings."""
-
-        if report.security_findings:
-            report.warnings.append(
-                f"{len(report.security_findings)} "
-                "security finding(s)"
-            )
-
-    def _warn_code_quality(
-        self,
-        report: RepositoryReport,
-    ):
-        """Generate code-quality warnings."""
-
-        warning_groups = [
-            (
-                len(report.complex_functions),
-                "high-complexity function(s)",
-            ),
-            (
-                len(report.large_functions),
-                "large function(s)",
-            ),
-            (
-                len(report.deep_functions),
-                "deeply nested function(s)",
-            ),
-            (
-                len(report.argument_heavy_functions),
-                "function(s) with too many arguments",
-            ),
-            (
-                len(report.large_files),
-                "large Python file(s)",
-            ),
-        ]
-
-        for count, message in warning_groups:
-            if count:
-                report.warnings.append(
-                    f"{count} {message}"
-                )
-
-        if report.total_todos:
-            report.warnings.append(
-                f"{report.total_todos} "
-                "TODO/FIXME comment(s)"
-            )
-
-    def _warn_project_structure(
-        self,
-        report: RepositoryReport,
-    ):
-        """Generate project-structure warnings."""
-
-        if not report.has_readme:
-            report.warnings.append(
-                "README file is missing"
-            )
-
-        if not report.has_gitignore:
-            report.warnings.append(
-                ".gitignore is missing"
-            )
-
-    def _warn_git(
-        self,
-        report: RepositoryReport,
-    ):
-        """Generate Git health warnings."""
-
-        if not report.git.is_repo:
-            return
-
-        if not report.git.clean:
-            report.warnings.append(
-                "Git working tree has changes"
-            )
-
-        if not report.git.remote:
-            report.warnings.append(
-                "Git remote is not configured"
-            )
-    # ------------------------------------------------------------------
-    # Health score
-    # ------------------------------------------------------------------
-
-    def _calculate_score(
-        self,
-        report: RepositoryReport,
-    ):
-        """Calculate the repository health score."""
-
-        report.health_score = (
-            self.health_scorer.calculate(report)
-        )
