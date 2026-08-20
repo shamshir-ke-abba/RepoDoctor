@@ -131,3 +131,26 @@ max_file_size_bytes = 10
     scanner = RepositoryScanner(tmp_path)
 
     assert scanner.file_collector.max_file_size_bytes == 10
+
+def test_unreadable_pyproject_uses_defaults(
+    tmp_path,
+    monkeypatch,
+):
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text(
+        "[tool.repodoctor]\ncomplexity_threshold = 5\n"
+    )
+
+    original_open = Path.open
+
+    def failing_open(self, *args, **kwargs):
+        if self == pyproject:
+            raise OSError("permission denied")
+
+        return original_open(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", failing_open)
+
+    config = ScanConfig.from_pyproject(tmp_path)
+
+    assert config == ScanConfig()
