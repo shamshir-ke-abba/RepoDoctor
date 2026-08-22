@@ -11,64 +11,22 @@ class PythonAnalyzer:
     """Analyze Python source files."""
 
     def analyze(self, path: Path) -> PythonFileReport:
-
         source = path.read_text(
             encoding="utf-8",
             errors="ignore",
         )
 
         lines = len(source.splitlines())
+        tree = self._parse_source(source)
 
-        try:
-            tree = ast.parse(source)
+        if tree is None:
+            return self._empty_report(path, lines)
 
-        except SyntaxError:
-            return PythonFileReport(
-                path=str(path),
-                lines=lines,
-                functions=0,
-                classes=0,
-                todos=0,
-            )
+        functions, classes, function_reports = (
+            self._analyze_tree(tree, path)
+        )
 
-        functions = 0
-        classes = 0
-        todos = 0
-
-        function_reports = []
-
-        for node in ast.walk(tree):
-
-            if isinstance(
-                node,
-                (
-                    ast.FunctionDef,
-                    ast.AsyncFunctionDef,
-                ),
-            ):
-
-                functions += 1
-
-                report = self._analyze_function(
-                    node,
-                    path,
-                )
-
-                function_reports.append(report)
-
-            elif isinstance(
-                node,
-                ast.ClassDef,
-            ):
-
-                classes += 1
-
-        for line in source.splitlines():
-
-            upper = line.upper()
-
-            if "TODO" in upper or "FIXME" in upper:
-                todos += 1
+        todos = self._count_todos(source)
 
         return PythonFileReport(
             path=str(path),
@@ -79,12 +37,82 @@ class PythonAnalyzer:
             functions_report=function_reports,
         )
 
+    def _parse_source(
+        self,
+        source: str,
+    ) -> ast.AST | None:
+        """Parse Python source and return its AST."""
+
+        try:
+            return ast.parse(source)
+        except SyntaxError:
+            return None
+
+    def _empty_report(
+        self,
+        path: Path,
+        lines: int,
+    ) -> PythonFileReport:
+        """Build a report for invalid Python source."""
+
+        return PythonFileReport(
+            path=str(path),
+            lines=lines,
+            functions=0,
+            classes=0,
+            todos=0,
+        )
+
+    def _analyze_tree(
+        self,
+        tree: ast.AST,
+        path: Path,
+    ) -> tuple[int, int, list[FunctionReport]]:
+        """Collect functions, classes, and function reports."""
+
+        functions = 0
+        classes = 0
+        function_reports = []
+
+        for node in ast.walk(tree):
+            if isinstance(
+                node,
+                (
+                    ast.FunctionDef,
+                    ast.AsyncFunctionDef,
+                ),
+            ):
+                functions += 1
+                function_reports.append(
+                    self._analyze_function(
+                        node,
+                        path,
+                    )
+                )
+
+            elif isinstance(node, ast.ClassDef):
+                classes += 1
+
+        return functions, classes, function_reports
+
+    def _count_todos(self, source: str) -> int:
+        """Count TODO and FIXME comments."""
+
+        todos = 0
+
+        for line in source.splitlines():
+            upper = line.upper()
+
+            if "TODO" in upper or "FIXME" in upper:
+                todos += 1
+
+        return todos
+
     def _analyze_function(
         self,
         function: ast.AST,
         path: Path,
     ) -> FunctionReport:
-
         complexity = self._calculate_complexity(
             function
         )
@@ -117,7 +145,6 @@ class PythonAnalyzer:
         self,
         function: ast.AST,
     ) -> int:
-
         complexity = 1
 
         decision_nodes = (
@@ -133,7 +160,6 @@ class PythonAnalyzer:
         )
 
         for node in ast.walk(function):
-
             if node is function:
                 continue
 
@@ -153,10 +179,7 @@ class PythonAnalyzer:
             ):
                 complexity += 1
 
-            elif isinstance(
-                node,
-                ast.BoolOp,
-            ):
+            elif isinstance(node, ast.BoolOp):
                 complexity += (
                     len(node.values) - 1
                 )
@@ -167,8 +190,7 @@ class PythonAnalyzer:
         self,
         function: ast.AST,
     ) -> int:
-
-        max_depth = 0
+        """Calculate the maximum nesting depth."""
 
         nesting_nodes = (
             ast.If,
@@ -180,51 +202,66 @@ class PythonAnalyzer:
             ast.Try,
         )
 
-        def walk(
-            node: ast.AST,
-            depth: int,
-        ):
+        max_depth = 0
 
-            nonlocal max_depth
-
-            if isinstance(
-                node,
-                nesting_nodes,
-            ):
-                depth += 1
-
-                max_depth = max(
-                    max_depth,
-                    depth,
-                )
-
-            for child in ast.iter_child_nodes(
-                node
-            ):
-
-                if isinstance(
+        for child in ast.iter_child_nodes(function):
+            max_depth = max(
+                max_depth,
+                self._nesting_depth(
                     child,
-                    (
-                        ast.FunctionDef,
-                        ast.AsyncFunctionDef,
-                    ),
-                ):
-                    continue
-
-                walk(child, depth)
-
-        for child in ast.iter_child_nodes(
-            function
-        ):
-            walk(child, 0)
+                    0,
+                    nesting_nodes,
+                ),
+            )
 
         return max_depth
+
+    def _nesting_depth(
+        self,
+        node: ast.AST,
+        depth: int,
+        nesting_nodes: tuple,
+    ) -> int:
+        """Find the deepest nesting level below a node."""
+
+        if isinstance(node, nesting_nodes):
+            depth += 1
+
+        max_depth = depth
+
+        for child in ast.iter_child_nodes(node):
+            if self._is_nested_function(child):
+                continue
+
+            max_depth = max(
+                max_depth,
+                self._nesting_depth(
+                    child,
+                    depth,
+                    nesting_nodes,
+                ),
+            )
+
+        return max_depth
+
+    def _is_nested_function(
+        self,
+        node: ast.AST,
+    ) -> bool:
+        """Return whether an AST node defines a nested function."""
+
+        return isinstance(
+            node,
+            (
+                ast.FunctionDef,
+                ast.AsyncFunctionDef,
+            ),
+        )
 
     def _count_arguments(
         self,
         function: ast.AST,
     ) -> int:
-
         arguments = function.args
 
         return (

@@ -30,3 +30,7 @@ large_file_threshold = 500
 large_function_threshold = 50
 nesting_threshold = 4
 argument_threshold = 6
+exclude = [
+    "tests",
+    "demo-project",
+]

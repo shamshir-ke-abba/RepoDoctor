@@ -2,12 +2,12 @@ from repodoctor.models import RepositoryReport
 
 
 class TerminalReporter:
+    """Render repository health reports in the terminal."""
 
     def print_report(
         self,
         report: RepositoryReport,
     ):
-
         self._print_header(report)
         self._print_project(report)
         self._print_structure(report)
@@ -25,24 +25,14 @@ class TerminalReporter:
         self,
         report: RepositoryReport,
     ):
-
         self._section("RECOMMENDATIONS")
 
         if not report.recommendations:
-
-            print(
-                "✓ No recommendations"
-            )
-
+            print("✓ No recommendations")
             return
 
-        for recommendation in (
-            report.recommendations
-        ):
-
-            print(
-                f"→ {recommendation}"
-            )
+        for recommendation in report.recommendations:
+            print(f"→ {recommendation}")
 
         self._print_score(report)
 
@@ -50,7 +40,6 @@ class TerminalReporter:
         self,
         report: RepositoryReport,
     ):
-
         print()
 
         print(
@@ -73,34 +62,37 @@ class TerminalReporter:
         self,
         report: RepositoryReport,
     ):
-
         self._section("PROJECT")
 
         print(
-            f"Python files       {report.python_files}"
+            f"Python files       "
+            f"{report.python_files}"
         )
 
         print(
-            f"Total lines        {report.total_lines}"
+            f"Total lines        "
+            f"{report.total_lines}"
         )
 
         print(
-            f"Functions          {report.total_functions}"
+            f"Functions          "
+            f"{report.total_functions}"
         )
 
         print(
-            f"Classes            {report.total_classes}"
+            f"Classes            "
+            f"{report.total_classes}"
         )
 
         print(
-            f"TODO/FIXME         {report.total_todos}"
+            f"TODO/FIXME         "
+            f"{report.total_todos}"
         )
 
     def _print_structure(
         self,
         report: RepositoryReport,
     ):
-
         self._section("STRUCTURE")
 
         self._status(
@@ -122,7 +114,6 @@ class TerminalReporter:
         self,
         report: RepositoryReport,
     ):
-
         self._section("GIT HEALTH")
 
         if not report.git.is_repo:
@@ -175,7 +166,6 @@ class TerminalReporter:
         self,
         report: RepositoryReport,
     ):
-
         self._section("WARNINGS")
 
         if not report.warnings:
@@ -189,7 +179,6 @@ class TerminalReporter:
         self,
         report: RepositoryReport,
     ):
-
         self._section("LARGE FILES")
 
         if not report.large_files:
@@ -205,7 +194,6 @@ class TerminalReporter:
         self,
         report: RepositoryReport,
     ):
-
         self._section("COMPLEXITY")
 
         if not report.complex_functions:
@@ -215,10 +203,10 @@ class TerminalReporter:
             return
 
         for function in report.complex_functions:
-
             self._print_function(
                 function,
                 (
+                    f"{function.name}() "
                     f"complexity: "
                     f"{function.complexity}"
                 ),
@@ -228,7 +216,6 @@ class TerminalReporter:
         self,
         report: RepositoryReport,
     ):
-
         self._section("FUNCTION SIZE")
 
         if not report.large_functions:
@@ -238,17 +225,18 @@ class TerminalReporter:
             return
 
         for function in report.large_functions:
-
             self._print_function(
                 function,
-                f"{function.lines} lines",
+                (
+                    f"{function.name}() "
+                    f"{function.lines} lines"
+                ),
             )
 
     def _print_nesting(
         self,
         report: RepositoryReport,
     ):
-
         self._section("NESTING")
 
         if not report.deep_functions:
@@ -258,10 +246,10 @@ class TerminalReporter:
             return
 
         for function in report.deep_functions:
-
             self._print_function(
                 function,
                 (
+                    f"{function.name}() "
                     f"nesting depth: "
                     f"{function.nesting_depth}"
                 ),
@@ -271,7 +259,6 @@ class TerminalReporter:
         self,
         report: RepositoryReport,
     ):
-
         self._section("ARGUMENTS")
 
         if not report.argument_heavy_functions:
@@ -280,15 +267,12 @@ class TerminalReporter:
             )
             return
 
-        for function in (
-            report.argument_heavy_functions
-        ):
-
+        for function in report.argument_heavy_functions:
             self._print_function(
                 function,
                 (
-                    f"{function.arguments} "
-                    "arguments"
+                    f"{function.name}() "
+                    f"{function.arguments} arguments"
                 ),
             )
 
@@ -296,7 +280,6 @@ class TerminalReporter:
         self,
         report: RepositoryReport,
     ):
-
         self._section("SECURITY")
 
         if not report.security_findings:
@@ -306,71 +289,51 @@ class TerminalReporter:
             return
 
         for finding in report.security_findings:
-
             print(
                 f"⚠ [{finding.severity}] "
-                f"{finding.file}:{finding.line}"
-            )
-
-            print(
-                f"  └── {finding.message}"
+                f"{finding.file}:{finding.line} "
+                f"{finding.rule}: "
+                f"{finding.message}"
             )
 
     def _print_score(
         self,
         report: RepositoryReport,
     ):
-
         print()
-
-        print(
-            "──────────────────────────────────────"
-        )
-
+        print("─" * 40)
         print(
             f"HEALTH SCORE: "
             f"{report.health_score}/100"
         )
-
-        print(
-            "──────────────────────────────────────"
-        )
-
-        print()
+        print("─" * 40)
 
     def _print_function(
         self,
         function,
-        detail: str,
+        description: str,
     ):
-
         print(
-            f"⚠ {function.file}:"
-            f"{function.line}"
+            f"⚠ {function.file}:{function.line}"
         )
-
         print(
-            f"  └── {function.name}() "
-            f"{detail}"
+            f"  └── {description}"
         )
 
     def _section(
         self,
-        name: str,
+        title: str,
     ):
-
         print()
-        print(name)
-        print("─" * 38)
+        print(title)
+        print("─" * 40)
 
     def _status(
         self,
         name: str,
-        success: bool,
+        status: bool,
     ):
-
-        symbol = "✓" if success else "⚠"
-
+        symbol = "✓" if status else "⚠"
         print(
             f"{symbol} {name}"
         )

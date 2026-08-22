@@ -24,22 +24,42 @@ class ScanConfig:
     ) -> "ScanConfig":
         """Load configuration from pyproject.toml."""
 
+        section = cls._load_section(root)
+
+        if section is None:
+            return cls()
+
+        return cls._from_section(section)
+
+    @staticmethod
+    def _load_section(
+        root: Path,
+    ) -> dict | None:
+        """Load the RepoDoctor configuration section."""
+
         pyproject = root / "pyproject.toml"
 
         if not pyproject.exists():
-            return cls()
+            return None
 
         try:
             with pyproject.open("rb") as file:
                 data = tomllib.load(file)
         except (OSError, tomllib.TOMLDecodeError):
-            return cls()
+            return None
 
-        section = (
+        return (
             data
             .get("tool", {})
             .get("repodoctor", {})
         )
+
+    @classmethod
+    def _from_section(
+        cls,
+        section: dict,
+    ) -> "ScanConfig":
+        """Build configuration from a TOML section."""
 
         return cls(
             complexity_threshold=cls._get_int(
