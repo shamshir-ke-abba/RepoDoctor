@@ -353,3 +353,19 @@ def hello(a, b):
 
     assert len(report.complex_functions) == 1
     assert len(report.argument_heavy_functions) == 1
+
+def test_scanner_uses_configured_excluded_directories(
+    tmp_path: Path,
+):
+    config = ScanConfig(
+        excluded_directories={"tests"},
+    )
+
+    scanner = RepositoryScanner(
+        tmp_path,
+        config,
+    )
+
+    assert scanner.file_collector.excluded_directories == {
+        "tests"
+    }

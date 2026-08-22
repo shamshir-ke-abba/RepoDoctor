@@ -31,6 +31,9 @@ class RepositoryScanner:
         self.file_collector = FileCollector(
             self.root,
             max_file_size_bytes=self.config.max_file_size_bytes,
+            excluded_directories=(
+                self.config.excluded_directories
+            ),
         )
 
         self.python_analyzer = PythonAnalyzer()

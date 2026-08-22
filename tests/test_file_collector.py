@@ -190,3 +190,48 @@ def test_python_files_are_sorted(
             m_file,
         ]
     )
+
+def test_excludes_configured_directories(
+    tmp_path: Path,
+):
+    (tmp_path / "app.py").write_text("print('hello')")
+
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "test_app.py").write_text(
+        "API_KEY = 'fake_secret'"
+    )
+
+    collector = FileCollector(
+        tmp_path,
+        excluded_directories={"tests"},
+    )
+
+    files = list(collector.files())
+
+    assert files == [tmp_path / "app.py"]
+
+
+def test_excludes_configured_directories_nested(
+    tmp_path: Path,
+):
+    package = tmp_path / "package"
+    package.mkdir()
+
+    valid = package / "valid.py"
+    valid.write_text("print('hello')")
+
+    fixtures = package / "fixtures"
+    fixtures.mkdir()
+
+    ignored = fixtures / "ignored.py"
+    ignored.write_text("fake secret")
+
+    collector = FileCollector(
+        tmp_path,
+        excluded_directories={"fixtures"},
+    )
+
+    files = list(collector.files())
+
+    assert files == [valid]

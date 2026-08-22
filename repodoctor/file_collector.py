@@ -18,21 +18,30 @@ class FileCollector:
         self,
         root: Path,
         max_file_size_bytes: int = 2_000_000,
+        excluded_directories: set[str] | None = None,
     ):
         self.root = root.resolve()
         self.max_file_size_bytes = max_file_size_bytes
+        self.excluded_directories = (
+            set(excluded_directories or ())
+        )
 
     def files(self):
         """Yield eligible repository files in deterministic order."""
 
         paths = []
 
+        ignored_directories = (
+            self.IGNORED_DIRECTORIES
+            | self.excluded_directories
+        )
+
         for path in self.root.rglob("*"):
             if not path.is_file():
                 continue
 
             if any(
-                part in self.IGNORED_DIRECTORIES
+                part in ignored_directories
                 for part in path.parts
             ):
                 continue

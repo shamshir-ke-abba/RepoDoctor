@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import tomllib
 
@@ -13,6 +13,9 @@ class ScanConfig:
     nesting_threshold: int = 4
     argument_threshold: int = 6
     max_file_size_bytes: int = 2_000_000
+    excluded_directories: set[str] = field(
+        default_factory=set
+    )
 
     @classmethod
     def from_pyproject(
@@ -69,7 +72,27 @@ class ScanConfig:
                 "max_file_size_bytes",
                 cls.max_file_size_bytes,
             ),
+            excluded_directories=(
+                cls._get_excluded_directories(section)
+            ),
         )
+
+    @staticmethod
+    def _get_excluded_directories(
+        section: dict,
+    ) -> set[str]:
+        """Read configured directories to exclude."""
+
+        value = section.get("exclude", [])
+
+        if not isinstance(value, list):
+            return set()
+
+        return {
+            item
+            for item in value
+            if isinstance(item, str) and item
+        }
 
     @staticmethod
     def _get_int(

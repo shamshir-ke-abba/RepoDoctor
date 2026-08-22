@@ -154,3 +154,46 @@ def test_unreadable_pyproject_uses_defaults(
     config = ScanConfig.from_pyproject(tmp_path)
 
     assert config == ScanConfig()
+
+
+def test_default_excluded_directories():
+    config = ScanConfig()
+
+    assert config.excluded_directories == set()
+
+
+def test_excluded_directories_load_from_pyproject(
+    tmp_path,
+):
+    pyproject = tmp_path / "pyproject.toml"
+
+    pyproject.write_text(
+        """
+[tool.repodoctor]
+exclude = ["tests", "demo-project"]
+""".strip()
+    )
+
+    config = ScanConfig.from_pyproject(tmp_path)
+
+    assert config.excluded_directories == {
+        "tests",
+        "demo-project",
+    }
+
+
+def test_invalid_excluded_directories_use_empty_set(
+    tmp_path,
+):
+    pyproject = tmp_path / "pyproject.toml"
+
+    pyproject.write_text(
+        """
+[tool.repodoctor]
+exclude = "tests"
+""".strip()
+    )
+
+    config = ScanConfig.from_pyproject(tmp_path)
+
+    assert config.excluded_directories == set()
