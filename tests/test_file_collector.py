@@ -235,3 +235,31 @@ def test_excludes_configured_directories_nested(
     files = list(collector.files())
 
     assert files == [valid]
+
+def test_configured_exclusions_preserve_default_ignored_directories(
+    tmp_path: Path,
+):
+    (tmp_path / "app.py").write_text(
+        "print('hello')"
+    )
+
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "test_app.py").write_text(
+        "print('ignored')"
+    )
+
+    cache = tmp_path / "__pycache__"
+    cache.mkdir()
+    (cache / "ignored.py").write_text(
+        "print('ignored')"
+    )
+
+    collector = FileCollector(
+        tmp_path,
+        excluded_directories={"tests"},
+    )
+
+    files = list(collector.files())
+
+    assert files == [tmp_path / "app.py"]
