@@ -82,6 +82,27 @@ def test_scanner_detects_large_file(tmp_path: Path):
     assert len(report.large_files) == 1
     assert "large.py" in report.large_files[0]
 
+def test_scanner_large_file_threshold_is_inclusive(
+    tmp_path: Path,
+):
+    (tmp_path / "main.py").write_text(
+        "\n".join(
+            "value = 1"
+            for _ in range(10)
+        )
+    )
+
+    config = ScanConfig(
+        large_file_threshold=10,
+    )
+
+    report = RepositoryScanner(
+        tmp_path,
+        config,
+    ).scan()
+
+    assert len(report.large_files) == 1
+
 
 def test_scanner_detects_large_function(tmp_path: Path):
     body = "\n".join(
@@ -106,6 +127,31 @@ def test_scanner_detects_large_function(tmp_path: Path):
 
     assert len(report.large_functions) == 1
     assert report.large_functions[0].name == "large"
+
+def test_scanner_large_function_threshold_is_inclusive(
+    tmp_path: Path,
+):
+    body = "\n".join(
+        f"    value_{index} = {index}"
+        for index in range(4)
+    )
+
+    (tmp_path / "main.py").write_text(
+        "def example():\n"
+        + body
+        + "\n"
+    )
+
+    config = ScanConfig(
+        large_function_threshold=5,
+    )
+
+    report = RepositoryScanner(
+        tmp_path,
+        config,
+    ).scan()
+
+    assert len(report.large_functions) == 1
 
 
 def test_scanner_detects_complex_function(tmp_path: Path):
@@ -133,6 +179,28 @@ def complex_function(value):
     assert len(report.complex_functions) == 1
     assert report.complex_functions[0].name == "complex_function"
 
+def test_scanner_complexity_threshold_is_inclusive(
+    tmp_path: Path,
+):
+    (tmp_path / "main.py").write_text(
+        """
+def example(value):
+    if value:
+        return True
+    return False
+"""
+    )
+
+    config = ScanConfig(
+        complexity_threshold=2,
+    )
+
+    report = RepositoryScanner(
+        tmp_path,
+        config,
+    ).scan()
+
+    assert len(report.complex_functions) == 1
 
 def test_scanner_detects_deep_function(tmp_path: Path):
     (tmp_path / "deep.py").write_text(
@@ -158,6 +226,30 @@ def deeply_nested(value):
     assert len(report.deep_functions) == 1
     assert report.deep_functions[0].name == "deeply_nested"
 
+def test_scanner_nesting_threshold_is_inclusive(
+    tmp_path: Path,
+):
+    (tmp_path / "main.py").write_text(
+        """
+def example(value):
+    if value:
+        for item in value:
+            while item:
+                return True
+    return False
+"""
+    )
+
+    config = ScanConfig(
+        nesting_threshold=3,
+    )
+
+    report = RepositoryScanner(
+        tmp_path,
+        config,
+    ).scan()
+
+    assert len(report.deep_functions) == 1
 
 def test_scanner_detects_argument_heavy_function(
     tmp_path: Path,
@@ -184,6 +276,26 @@ def configure(a, b, c, d, e, f):
         == "configure"
     )
 
+def test_scanner_argument_threshold_is_inclusive(
+    tmp_path: Path,
+):
+    (tmp_path / "main.py").write_text(
+        """
+def example(a, b, c):
+    return a
+"""
+    )
+
+    config = ScanConfig(
+        argument_threshold=3,
+    )
+
+    report = RepositoryScanner(
+        tmp_path,
+        config,
+    ).scan()
+
+    assert len(report.argument_heavy_functions) == 1
 
 def test_scanner_detects_security_findings(
     tmp_path: Path,
@@ -369,3 +481,31 @@ def test_scanner_uses_configured_excluded_directories(
     assert scanner.file_collector.excluded_directories == {
         "tests"
     }
+
+def test_scanner_excludes_configured_directories(
+    tmp_path: Path,
+):
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+
+    (tmp_path / "main.py").write_text(
+        "def main():\n"
+        "    return True\n"
+    )
+
+    (tests_dir / "test_main.py").write_text(
+        "def test_main():\n"
+        "    return True\n"
+    )
+
+    config = ScanConfig(
+        excluded_directories={"tests"},
+    )
+
+    report = RepositoryScanner(
+        tmp_path,
+        config,
+    ).scan()
+
+    assert report.python_files == 1
+    assert report.total_functions == 1
