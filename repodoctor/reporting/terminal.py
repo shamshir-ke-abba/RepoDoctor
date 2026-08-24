@@ -225,11 +225,17 @@ class TerminalReporter:
             return
 
         for function in report.large_functions:
+            lines = (
+                function.end_line
+                - function.line
+                + 1
+            )
+
             self._print_function(
                 function,
                 (
                     f"{function.name}() "
-                    f"{function.lines} lines"
+                    f"{lines} lines"
                 ),
             )
 
