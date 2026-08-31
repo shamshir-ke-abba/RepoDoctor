@@ -287,3 +287,37 @@ def test_analyzer_handles_function_without_end_lineno(
     assert report.complexity == 1
     assert report.arguments == 0
     assert report.nesting_depth == 0
+
+def test_analyzer_handles_read_os_error(
+    tmp_path: Path,
+    monkeypatch,
+):
+    path = tmp_path / "broken.py"
+    path.write_text("def hello():\n    return True\n")
+
+    original_read_text = Path.read_text
+
+    def failing_read_text(self, *args, **kwargs):
+        if self == path:
+            raise OSError("permission denied")
+
+        return original_read_text(
+            self,
+            *args,
+            **kwargs,
+        )
+
+    monkeypatch.setattr(
+        Path,
+        "read_text",
+        failing_read_text,
+    )
+
+    result = PythonAnalyzer().analyze(path)
+
+    assert result.path == str(path)
+    assert result.lines == 0
+    assert result.functions == 0
+    assert result.classes == 0
+    assert result.todos == 0
+    assert result.functions_report == []

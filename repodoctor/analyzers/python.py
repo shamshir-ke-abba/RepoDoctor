@@ -11,10 +11,10 @@ class PythonAnalyzer:
     """Analyze Python source files."""
 
     def analyze(self, path: Path) -> PythonFileReport:
-        source = path.read_text(
-            encoding="utf-8",
-            errors="ignore",
-        )
+        source = self._read_source(path)
+
+        if source is None:
+            return self._empty_report(path, 0)
 
         lines = len(source.splitlines())
         tree = self._parse_source(source)
@@ -37,6 +37,20 @@ class PythonAnalyzer:
             functions_report=function_reports,
         )
 
+    def _read_source(
+        self,
+        path: Path,
+    ) -> str | None:
+        """Read Python source safely."""
+
+        try:
+            return path.read_text(
+                encoding="utf-8",
+                errors="ignore",
+            )
+        except OSError:
+            return None
+
     def _parse_source(
         self,
         source: str,
@@ -53,7 +67,7 @@ class PythonAnalyzer:
         path: Path,
         lines: int,
     ) -> PythonFileReport:
-        """Build a report for invalid Python source."""
+        """Build a report for invalid or unreadable Python source."""
 
         return PythonFileReport(
             path=str(path),
