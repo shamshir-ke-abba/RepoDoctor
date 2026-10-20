@@ -107,4 +107,16 @@ class HealthScorer:
         if not report.git.remote:
             penalty += 3
 
+        if report.git.detached_head:
+            penalty += 3
+
+        if not report.git.upstream:
+            penalty += 2
+
+        if report.git.conflicts:
+            penalty += min(
+                report.git.conflicts * 5,
+                15,
+            )
+
         return penalty

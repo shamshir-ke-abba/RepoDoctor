@@ -333,3 +333,171 @@ def test_to_int_returns_zero_for_invalid_value():
     analyzer = GitAnalyzer()
 
     assert analyzer._to_int("invalid") == 0
+
+def test_detects_attached_head(
+    tmp_path: Path,
+):
+    git(tmp_path, "init", "-b", "main")
+
+    file = tmp_path / "hello.py"
+    file.write_text("print('hello')")
+
+    git(tmp_path, "add", ".")
+    git(
+        tmp_path,
+        "-c",
+        "user.name=Test",
+        "-c",
+        "user.email=test@example.com",
+        "commit",
+        "-m",
+        "Initial commit",
+    )
+
+    result = GitAnalyzer().analyze(tmp_path)
+
+    assert result.detached_head is False
+
+
+def test_detects_detached_head(
+    tmp_path: Path,
+):
+    git(tmp_path, "init", "-b", "main")
+
+    file = tmp_path / "hello.py"
+    file.write_text("print('hello')")
+
+    git(tmp_path, "add", ".")
+    git(
+        tmp_path,
+        "-c",
+        "user.name=Test",
+        "-c",
+        "user.email=test@example.com",
+        "commit",
+        "-m",
+        "Initial commit",
+    )
+
+    git(tmp_path, "checkout", "--detach", "HEAD")
+
+    result = GitAnalyzer().analyze(tmp_path)
+
+    assert result.detached_head is True
+    assert result.branch == "unknown"
+
+
+def test_detects_missing_upstream(
+    tmp_path: Path,
+):
+    git(tmp_path, "init", "-b", "main")
+
+    result = GitAnalyzer().analyze(tmp_path)
+
+    assert result.upstream is False
+
+
+def test_detects_upstream(
+    tmp_path: Path,
+):
+    git(tmp_path, "init", "-b", "main")
+
+    file = tmp_path / "hello.py"
+    file.write_text("print('hello')")
+
+    git(tmp_path, "add", ".")
+    git(
+        tmp_path,
+        "-c",
+        "user.name=Test",
+        "-c",
+        "user.email=test@example.com",
+        "commit",
+        "-m",
+        "Initial commit",
+    )
+
+    git(
+        tmp_path,
+        "remote",
+        "add",
+        "origin",
+        "https://example.com/test.git",
+    )
+
+    git(
+        tmp_path,
+        "branch",
+        "--set-upstream-to=origin/main",
+    )
+
+    result = GitAnalyzer().analyze(tmp_path)
+
+    assert result.upstream is True
+
+
+def test_counts_unresolved_merge_conflicts(
+    tmp_path: Path,
+):
+    git(tmp_path, "init", "-b", "main")
+
+    file = tmp_path / "hello.txt"
+    file.write_text("main")
+
+    git(tmp_path, "add", ".")
+    git(
+        tmp_path,
+        "-c",
+        "user.name=Test",
+        "-c",
+        "user.email=test@example.com",
+        "commit",
+        "-m",
+        "Initial commit",
+    )
+
+    git(tmp_path, "checkout", "-b", "feature")
+
+    file.write_text("feature")
+
+    git(tmp_path, "add", "hello.txt")
+    git(
+        tmp_path,
+        "-c",
+        "user.name=Test",
+        "-c",
+        "user.email=test@example.com",
+        "commit",
+        "-m",
+        "Feature change",
+    )
+
+    git(tmp_path, "checkout", "main")
+
+    file.write_text("main change")
+
+    git(tmp_path, "add", "hello.txt")
+    git(
+        tmp_path,
+        "-c",
+        "user.name=Test",
+        "-c",
+        "user.email=test@example.com",
+        "commit",
+        "-m",
+        "Main change",
+    )
+
+    process = subprocess.run(
+        ["git", "merge", "feature"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+
+    assert process.returncode != 0
+
+    result = GitAnalyzer().analyze(tmp_path)
+
+    assert result.conflicts == 1
+    assert result.clean is False

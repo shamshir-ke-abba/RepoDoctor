@@ -100,7 +100,23 @@ class WarningEngine:
                 "Git working tree has changes"
             )
 
+        if report.git.conflicts:
+            warnings.append(
+                f"{report.git.conflicts} "
+                "unresolved merge conflict(s)"
+            )
+
+        if report.git.detached_head:
+            warnings.append(
+                "Git HEAD is detached"
+            )
+
         if not report.git.remote:
             warnings.append(
                 "Git remote is not configured"
+            )
+
+        if not report.git.upstream:
+            warnings.append(
+                "Current branch has no upstream"
             )

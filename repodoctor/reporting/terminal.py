@@ -162,6 +162,33 @@ class TerminalReporter:
             f"{remote}"
         )
 
+        upstream = (
+            "✓ configured"
+            if report.git.upstream
+            else "⚠ not configured"
+        )
+
+        print(
+            f"Upstream           "
+            f"{upstream}"
+        )
+
+        head = (
+            "⚠ DETACHED"
+            if report.git.detached_head
+            else "✓ attached"
+        )
+
+        print(
+            f"HEAD               "
+            f"{head}"
+        )
+
+        print(
+            f"Conflicts          "
+            f"{report.git.conflicts}"
+        )
+
     def _print_warnings(
         self,
         report: RepositoryReport,

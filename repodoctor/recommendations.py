@@ -147,6 +147,20 @@ class RecommendationEngine:
         if not report.git.is_repo:
             return
 
+        if report.git.conflicts:
+
+            recommendations.append(
+                "Resolve all Git merge conflicts "
+                "before continuing development."
+            )
+
+        if report.git.detached_head:
+
+            recommendations.append(
+                "Switch to a branch before making "
+                "new commits from detached HEAD."
+            )
+
         if not report.git.clean:
 
             recommendations.append(
@@ -160,4 +174,11 @@ class RecommendationEngine:
                 "Configure a Git remote so the "
                 "repository can be backed up "
                 "and collaborated on."
+            )
+
+        if not report.git.upstream:
+
+            recommendations.append(
+                "Configure an upstream branch for "
+                "easier synchronization with the remote."
             )
